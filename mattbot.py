@@ -4,6 +4,7 @@ Implementation of the mattbot
 
 """
 
+import commands
 import os
 import requests
 import sys
@@ -23,43 +24,7 @@ slack_channels = None
 slack_ims = None
 
 
-def handle_hello_command(channel, user, value):
-    """
 
-    :param channel:
-    :param value:
-
-    :return:
-    """
-    response = 'Hello, {}!'.format(slack_users[user])
-    slack_client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
-
-
-def handle_bizzfuzz_command(channel, user, value):
-    """
-
-    :param channel:
-    :param value:
-
-    :return:
-    """
-    response = ''
-
-    try:
-        response = ''
-        number = int(value.strip())
-        if number % 15 == 0:
-            response = 'BizzFuzz'
-        elif number % 3 == 0:
-            response = 'Bizz'
-        elif number % 5 == 0:
-            response = 'Fuzz'
-        else:
-            response = number
-    except ValueError:
-        response = 'Please privide a number, "{}" is not valid.'.format(value)
-    finally:
-        slack_client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
 
 
 def handle_command(channel, user, bot_command):
@@ -72,12 +37,13 @@ def handle_command(channel, user, bot_command):
     print('>> Handling command {} from channel {}'.format(bot_command, channel))
 
     command_type, _, parameters = bot_command.partition(' ')
-    command_handler = 'handle_{}_command'.format(command_type)
-    current_module = sys.modules[__name__]
+    command_class = '{}Command'.format(command_type.capitalize())
+    command_module = sys.modules[commands]
 
     try:
-        handler = getattr(current_module, command_handler)
-        return handler(channel, user, parameters)
+        handler_class = getattr(command_module, command_class)
+        handler = handler_class(slack_client)
+        return handler.run(channel, user, parameters)
     except AttributeError:
         response = 'Not sure what you mean.'
         slack_client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
