@@ -5,12 +5,14 @@ Get the ID of mattbot
 """
 from __future__ import unicode_literals, print_function
 
+import os
+
 from slackclient import SlackClient
 
 BOT_NAME = 'mattbot'
-SLACK_BOT_TOKEN = 'xoxb-3260572186-xwwFlhVdpZMKTNit0IsIMcsQ'
+MATTBOT_TOKEN = os.environ.get('MATTBOT_TOKEN')
 
-slack_client = SlackClient(SLACK_BOT_TOKEN)
+slack_client = SlackClient(MATTBOT_TOKEN)
 
 if __name__ == '__main__':
 
