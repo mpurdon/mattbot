@@ -3,10 +3,12 @@
 Commands the mattbot understands
 
 """
+# import dateutil
 
 
 class Command(object):
     """
+    Base command class
 
     """
     client = None
@@ -174,3 +176,50 @@ class LeaveCommand(Command):
             response = 'Sorry, {}, I could not leave {} due to {}.'.format(self.users[user], self.channels[channel], api_response.get('error', 'an error'))
             return self.client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
 
+
+class TestCommand(Command):
+    """
+    Perform some test action in the current channel
+
+    """
+    def run(self, channel, user, value):
+        """
+
+        Args:
+            channel:
+            user:
+            value:
+
+        Returns:
+
+        """
+        response = 'Okay {}, I going to try uploading a snippet.'.format(self.users[user])
+        self.client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
+
+        recipients = ['@mpurdon', ]
+        # recipient_ids = [recipient_id for recipient_id, name in self.users.items() if name in recipients]
+
+        snippet_file_name = 'snippet.{}.log'.format('foo') #  dateutil.datetime.now()
+
+        # user_ims = {v: k for k, v in self.ims.items() if v in recipient_ids}
+
+        content = 'This is the content of a really cool snippet'
+
+        # for recipient_id in recipient_ids:
+        #     im_id = user_ims[recipient_id]
+
+        recipients = ','.join(recipients)
+        print('Sending snippet {} to {}'.format(snippet_file_name, recipients))
+        api_response = self.client.api_call('files.upload',
+                                            channels=recipients,
+                                            filename=snippet_file_name,
+                                            filetype='text',
+                                            content=content,
+                                            initial_comment='I could not find a problem with the log.')
+
+        print('Got response: {}'.format(api_response))
+
+        if not api_response.get('ok', False):
+            message = 'Sorry {}, I was not able to send the snippet due to {}.'.format(self.users[user],
+                                                                                              api_response.get('error', 'an error'))
+            self.client.api_call('chat.postMessage', channel=channel, text=message, as_user=True)

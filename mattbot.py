@@ -13,6 +13,7 @@ from slackclient import SlackClient
 from tempfile import NamedTemporaryFile
 
 MATTBOT_NAME = 'mattbot'
+MATTBOT_ID = None
 MATTBOT_TOKEN = None
 
 READ_WEBSOCKET_DELAY = 1  # 1 second delay between reading from fire hose
@@ -93,9 +94,7 @@ def handle_deploy_log(channel, file):
     start_log = '#### RUNNING MIGRATIONS'
     end_log = '#### DONE'
 
-    print(file)
     url = file.get('url_private_download')
-    # url = file.get('permalink_public')
 
     file_name = download_file(url)
 
@@ -125,38 +124,29 @@ def handle_deploy_log(channel, file):
 
     has_errors = check_deploy_errors(log_content)
 
-    # recipients = ['robosung', 'mpurdon']
-    recipients = ['mpurdon', ]
-    recipient_ids = [recipient_id for recipient_id, name in slack_users.items() if name in recipients]
-
     if has_errors:
         message = 'I found an issue in the {} file, check the snippet.'.format(file['name'])
     else:
         message = 'I could not find any issues in the {} file, check the snippet.'.format(file['name'])
 
-    snippet_file_name = 'snippet.{}'.format(file['name'])
+    recipients = ['@mpurdon', ]
+    recipient_channels = ','.join(recipients)
 
-    user_ims = {v: k for k, v in slack_ims.items() if v in recipient_ids}
+    snippet_file_name = 'snippet.{}'.format(file['name'])
 
     content = ''.join(log_content)
 
-    for recipient_id in recipient_ids:
-        im_id = user_ims[recipient_id]
+    print('Sending snippet {} to {}'.format(snippet_file_name, recipient_channels))
+    api_response = slack_client.api_call('files.upload',
+                                         channels=recipient_channels,
+                                         content=content,
+                                         initial_comment=message,
+                                         filetype='text',
+                                         filename=snippet_file_name)
 
-        print('Sending message to {} IM.'.format(slack_users[recipient_id]))
-        slack_client.api_call('chat.postMessage', channel=recipient_id, text=message, as_user=True)
-
-        print('Sending snippet {} to {}'.format(snippet_file_name, slack_users[recipient_id]))
-        api_response = slack_client.api_call('files.upload',
-                                             channel=im_id,
-                                             content=content,
-                                             filename=snippet_file_name,
-                                             as_user=True)
-
-        if not api_response.get('ok', False):
-            message = 'Sorry {}, I was not able to send the snippet to you due to {}.'.format(slack_users[recipient_id],
-                                                                                              api_response.get('error', 'an error'))
-            slack_client.api_call('chat.postMessage', channel=recipient_id, text=message, as_user=True)
+    if not api_response.get('ok', False):
+        message = 'Sorry, I was not able to send the snippet due to {}.'.format(api_response.get('error', 'an error'))
+        slack_client.api_call('chat.postMessage', channel=channel, text=message, as_user=True)
 
 
 def handle_file(channel, user, file_data):
@@ -164,6 +154,9 @@ def handle_file(channel, user, file_data):
     Handle a file upload
 
     """
+    if user == MATTBOT_ID:
+        return
+
     file_name = file_data['name']
     print('>> Handling file {} from channel {} by {}'.format(file_name, channel, user))
 
@@ -216,9 +209,12 @@ def parse_slack_output(slack_rtm_output):
             return handle_command(channel, user, text)
 
         if user != MATTBOT_ID:
-            print('{user} says: "{message}" in {channel}'.format(user=slack_users[user],
-                                                                 message=text,
-                                                                 channel=channel_name))
+            try:
+                print('{user} says: "{message}" in {channel}'.format(user=slack_users[user],
+                                                                     message=text,
+                                                                     channel=channel_name))
+            except KeyError as error:
+                print('Error "{}" while processing "{}"'.format(str(error), text))
 
 
 def get_users():
