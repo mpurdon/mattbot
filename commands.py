@@ -177,6 +177,46 @@ class LeaveCommand(Command):
             return self.client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
 
 
+class ListenCommand(Command):
+    """
+    Tell the bot to listen to the current channel
+
+    """
+    def run(self, channel, user, value):
+        """
+
+        Args:
+            channel:
+            user:
+            value:
+
+        Returns:
+
+        """
+        response = 'Okay {}, I am listening for events in {}.'.format(self.users[user], self.channels[channel])
+        self.client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
+
+
+class IgnoreCommand(Command):
+    """
+    Tell the bot to ignore commands in this channel
+
+    """
+    def run(self, channel, user, value):
+        """
+
+        Args:
+            channel:
+            user:
+            value:
+
+        Returns:
+
+        """
+        response = 'Okay {}, I am no longer listening for events in {}.'.format(self.users[user], self.channels[channel])
+        self.client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
+
+
 class TestCommand(Command):
     """
     Perform some test action in the current channel

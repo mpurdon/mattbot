@@ -5,6 +5,7 @@ Implementation of the mattbot
 """
 import commands
 import os
+import pyttsx
 import requests
 import sys
 import time
@@ -45,20 +46,37 @@ def handle_command(channel, user, bot_command):
         slack_client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
 
 
-def check_deploy_errors(lines):
+def check_deploy_log(lines):
     """
+    Check for error key words or fake migration phrases
 
     Args:
-        lines:
+        lines (list): The lines from the log file
 
     Returns:
+        tuple:
 
     """
-    for line in lines:
-        if 'Error' in line or 'Traceback' in line:
-            return True
+    error_words = [
+        'Error',
+        'Traceback'
+    ]
 
-    return False
+    fake_phrases = [
+        "Table 'bearprofile_fitbitactivitynotification' already exists"
+    ]
+
+    has_errors = False
+    needs_fake = False
+
+    for line in lines:
+        if any(error_word in line for error_word in error_words):
+            has_errors = True
+
+        if any(fake_phrase in line for fake_phrase in fake_phrases):
+            needs_fake = True
+
+    return has_errors, needs_fake
 
 
 def download_file(url):
@@ -122,14 +140,18 @@ def handle_deploy_log(channel, file):
     # Nuke the log file
     os.unlink(file_name)
 
-    has_errors = check_deploy_errors(log_content)
+    has_errors, needs_fake = check_deploy_log(log_content)
+
+    message = 'I could not find any issues in the {} file, check the snippet.'.format(file['name'])
 
     if has_errors:
         message = 'I found an issue in the {} file, check the snippet.'.format(file['name'])
-    else:
-        message = 'I could not find any issues in the {} file, check the snippet.'.format(file['name'])
 
-    recipients = ['@mpurdon', ]
+    if needs_fake:
+        message = 'The {} file is clean but I think we need to run the fake.'.format(file['name'])
+
+    recipients = ['@mpurdon', '@robosung']
+    # recipients = ['@mpurdon', ]
     recipient_channels = ','.join(recipients)
 
     snippet_file_name = 'snippet.{}'.format(file['name'])
@@ -147,6 +169,9 @@ def handle_deploy_log(channel, file):
     if not api_response.get('ok', False):
         message = 'Sorry, I was not able to send the snippet due to {}.'.format(api_response.get('error', 'an error'))
         slack_client.api_call('chat.postMessage', channel=channel, text=message, as_user=True)
+
+    # Reply to the original channel with the message
+    slack_client.api_call('chat.postMessage', channel=channel, text=message, as_user=True)
 
 
 def handle_file(channel, user, file_data):
@@ -168,7 +193,7 @@ def handle_file(channel, user, file_data):
     slack_client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
 
 
-def parse_slack_output(slack_rtm_output):
+def parse_slack_output(slack_rtm_output, voice_engine):
     """
     The Slack Real Time Messaging API is an events firehose.
     this parsing function returns None unless a message is
@@ -190,6 +215,7 @@ def parse_slack_output(slack_rtm_output):
         user = output.get('user')
 
         channel = output.get('channel')
+        channel_name = None
         try:
             channel_name = slack_channels[channel]
         except KeyError:
@@ -199,7 +225,7 @@ def parse_slack_output(slack_rtm_output):
         if 'file' in output:
             return handle_file(channel_name, user, output['file'])
 
-        text = output.get('text', '')
+        text = output.get('text', '').encode('utf-8')
 
         if AT_MATTBOT in text:
             bot_command = text.split(AT_MATTBOT)[1].strip().lower()
@@ -208,13 +234,22 @@ def parse_slack_output(slack_rtm_output):
         if channel in slack_ims and user != MATTBOT_ID:
             return handle_command(channel, user, text)
 
+        # voice_engine.setProperty('voice', voices[0].id)  # changes the voice to Ivy
+        # voice_engine.setProperty('voice', voices[1].id)  # changes the voice to Stuart
+
         if user != MATTBOT_ID:
+
             try:
-                print('{user} says: "{message}" in {channel}'.format(user=slack_users[user],
-                                                                     message=text,
-                                                                     channel=channel_name))
+                message = '{user} says: "{message}" in {channel}'.format(user=slack_users[user],
+                                                                         message=text,
+                                                                         channel=channel_name)
+                # voice_engine.say(message)
+                # voice_engine.runAndWait()
+                print(message)
             except KeyError as error:
                 print('Error "{}" while processing "{}"'.format(str(error), text))
+            except UnicodeEncodeError as error:
+                print ('Could not parse message: {}'.format(str(error)))
 
 
 def get_users():
@@ -319,6 +354,10 @@ if __name__ == "__main__":
     print ('\nIMs')
     print ('\n'.join([k + ':' + v for k, v in slack_ims.items()]))
 
+    voice_engine = None
+    # voice_engine = pyttsx.init()
+    # voices = voice_engine.getProperty('voices')
+
     while True:
-        parse_slack_output(slack_client.rtm_read())
+        parse_slack_output(slack_client.rtm_read(), voice_engine)
         time.sleep(READ_WEBSOCKET_DELAY)
