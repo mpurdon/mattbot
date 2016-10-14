@@ -4,6 +4,7 @@ Commands the mattbot understands
 
 """
 # import dateutil
+import random
 
 
 class Command(object):
@@ -214,6 +215,28 @@ class IgnoreCommand(Command):
 
         """
         response = 'Okay {}, I am no longer listening for events in {}.'.format(self.users[user], self.channels[channel])
+        self.client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
+
+
+class Magic8Command(Command):
+    """
+    Perform a magic 8 ball response
+
+    """
+    def run(self, channel, user, value):
+        """
+
+        Args:
+            channel:
+            user:
+            value:
+
+        Returns:
+
+        """
+        options = ['Yes', 'Maybe', 'No']
+        selected = random.choice(options)
+        response = 'Magic 8-ball says....{}.'.format(selected)
         self.client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
 
 
