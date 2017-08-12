@@ -4,6 +4,9 @@ Commands the mattbot understands
 
 """
 # import dateutil
+import re
+
+import badwords
 import random
 
 
@@ -286,3 +289,49 @@ class TestCommand(Command):
             message = 'Sorry {}, I was not able to send the snippet due to {}.'.format(self.users[user],
                                                                                               api_response.get('error', 'an error'))
             self.client.api_call('chat.postMessage', channel=channel, text=message, as_user=True)
+
+
+class WhoCommand(Command):
+    """
+
+
+    """
+    def run(self, channel, user, value):
+        """
+
+        Args:
+            channel:
+            user:
+            value:
+
+        Returns:
+
+        """
+        noun = random.choice(badwords.nouns)
+        verb = random.choice(badwords.verbs)
+        adjective = random.choice(badwords.adjectives)
+
+        value = value.replace('?', '')
+
+        pattern = re.compile('<@[A-Z0-9]+>')
+        matches = re.search(pattern, value)
+        target = None
+        subject_verb = 'is'
+        if matches:
+            target = matches.group()
+        elif value[-2:] in (' i', ' I'):
+            target = 'You'
+            subject_verb = 'are'
+        elif value[-4:] in (' you', ' You'):
+            target = 'I'
+            subject_verb = 'am'
+        else:
+            _, target = value.split(None, 1)
+
+        # self.users[user]
+        indefinite_article = 'a'
+        if adjective[0].lower() in ('a', 'e', 'i', 'o', 'u'):
+            indefinite_article = 'an'
+
+        response = '{} {} {} {} {}, that likes to {}'.format(target, subject_verb, indefinite_article, adjective, noun, verb)
+        self.client.api_call('chat.postMessage', channel=channel, text=response, as_user=True)
