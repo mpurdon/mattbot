@@ -1,4 +1,3 @@
-# -*- coding: UTF-8 -*-
 """
 Get the ID of mattbot
 
