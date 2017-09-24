@@ -41,6 +41,7 @@ nouns = [
     'breasts',
     'buceta',
     'bum',
+    'bum buddy',
     'bunny fucker',
     'butt',
     'butthole',

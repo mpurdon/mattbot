@@ -111,7 +111,7 @@ class HandleFileCommand(Command):
             for line in log:
                 if not found_migrations:
                     if start_log in line:
-                        print('Found the start of the log')
+                        logger.debug('Found the start of the log')
                         found_migrations = True
                     else:
                         continue
@@ -119,7 +119,7 @@ class HandleFileCommand(Command):
                 log_content.append(line)
 
                 if found_migrations and end_log in line:
-                    print('Found the end of the log')
+                    logger.debug('Found the end of the log')
                     break
 
         # Nuke the log file
@@ -142,7 +142,7 @@ class HandleFileCommand(Command):
 
         content = ''.join(log_content)
 
-        print('Sending snippet {} to {}'.format(snippet_file_name, recipient_channels))
+        logger.debug('Sending snippet {} to {}'.format(snippet_file_name, recipient_channels))
         api_response = self.bot.slack_client.api_call('files.upload',
                                                       channels=recipient_channels,
                                                       content=content,

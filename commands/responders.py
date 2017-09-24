@@ -128,7 +128,6 @@ class WhoCommand(Command):
                 subject_verb = 'am'
             else:
                 _, target = parameters.split(None, 1)
-                # self.bot.get_user_name(user)
 
             indefinite_article = 'a'
             if adjective[0].lower() in ('a', 'e', 'i', 'o', 'u'):
